@@ -99,6 +99,29 @@ function kategoriProdi($prodi) {
     return "";
 }
 
+function prioritasProdi($prodi) {
+    $prioritas = [
+        "Teknik Informatika" => 1,
+        "Sistem Informasi" => 2,
+        "Teknologi Rekayasa Komputer" => 3,
+        "Animasi" => 4,
+
+        "Teknik Mesin" => 5,
+        "Teknik Elektronika" => 6,
+        "Teknik Listrik" => 7,
+        "Teknologi Rekayasa Jaringan Telekomunikasi" => 8,
+        "Teknologi Rekayasa Sistem Elektronika" => 9,
+        "Teknologi Rekayasa Mekatronika" => 10,
+        "Kecerdasan Buatan dan Robotika" => 11,
+
+        "Akuntansi Perpajakan" => 12,
+        "Bisnis Digital" => 13,
+        "Hubungan Masyarakat dan Komunikasi Digital" => 14
+    ];
+
+    return $prioritas[$prodi] ?? 99;
+}
+
 function skorMinat($siswa, $prodi) {
     if (normal($siswa["minat_pcr"]) == normal(kategoriProdi($prodi))) {
         return 100;
@@ -187,60 +210,29 @@ function nilaiAkademikProdi($siswa, $prodi) {
         $inggris = $siswa["nilai_inggris"];
         $mtk = $siswa["nilai_mtk"];
 
-        if ($prodi == "Teknik Informatika") {
-            return (0.10 * $ekonomi) + (0.25 * $inggris) + (0.65 * $mtk);
+        /*
+            Untuk anak IPS:
+            Jurusan Informasi dan Industri dibuat sama hitungannya.
+            Jadi kalau nilai Matematika tinggi, siswa bisa cocok ke TI atau Mesin.
+        */
+        if (kategoriProdi($prodi) == "Informasi" || kategoriProdi($prodi) == "Industri") {
+            return (0.70 * $mtk) + (0.20 * $inggris) + (0.10 * $ekonomi);
         }
 
-        if ($prodi == "Sistem Informasi") {
-            return (0.20 * $ekonomi) + (0.35 * $inggris) + (0.45 * $mtk);
-        }
-
-        if ($prodi == "Teknologi Rekayasa Komputer") {
-            return (0.10 * $ekonomi) + (0.25 * $inggris) + (0.65 * $mtk);
-        }
-
-        if ($prodi == "Animasi") {
-            return (0.15 * $ekonomi) + (0.65 * $inggris) + (0.20 * $mtk);
-        }
-
-        if ($prodi == "Teknik Elektronika") {
-            return (0.10 * $ekonomi) + (0.20 * $inggris) + (0.70 * $mtk);
-        }
-
-        if ($prodi == "Teknik Listrik") {
-            return (0.10 * $ekonomi) + (0.20 * $inggris) + (0.70 * $mtk);
-        }
-
-        if ($prodi == "Teknik Mesin") {
-            return (0.10 * $ekonomi) + (0.15 * $inggris) + (0.75 * $mtk);
-        }
-
-        if ($prodi == "Teknologi Rekayasa Jaringan Telekomunikasi") {
-            return (0.10 * $ekonomi) + (0.25 * $inggris) + (0.65 * $mtk);
-        }
-
-        if ($prodi == "Teknologi Rekayasa Sistem Elektronika") {
-            return (0.10 * $ekonomi) + (0.20 * $inggris) + (0.70 * $mtk);
-        }
-
-        if ($prodi == "Teknologi Rekayasa Mekatronika") {
-            return (0.10 * $ekonomi) + (0.20 * $inggris) + (0.70 * $mtk);
-        }
-
-        if ($prodi == "Kecerdasan Buatan dan Robotika") {
-            return (0.10 * $ekonomi) + (0.20 * $inggris) + (0.70 * $mtk);
-        }
-
+        /*
+            Untuk Bisnis dan Komunikasi:
+            Ekonomi dan Bahasa Inggris lebih berpengaruh.
+        */
         if ($prodi == "Akuntansi Perpajakan") {
-            return (0.65 * $ekonomi) + (0.15 * $inggris) + (0.20 * $mtk);
+            return (0.65 * $ekonomi) + (0.20 * $mtk) + (0.15 * $inggris);
         }
 
         if ($prodi == "Hubungan Masyarakat dan Komunikasi Digital") {
-            return (0.25 * $ekonomi) + (0.60 * $inggris) + (0.15 * $mtk);
+            return (0.60 * $inggris) + (0.25 * $ekonomi) + (0.15 * $mtk);
         }
 
         if ($prodi == "Bisnis Digital") {
-            return (0.50 * $ekonomi) + (0.30 * $inggris) + (0.20 * $mtk);
+            return (0.45 * $ekonomi) + (0.30 * $inggris) + (0.25 * $mtk);
         }
     }
 
@@ -280,6 +272,10 @@ function ambilTopTigaProdi($siswa) {
         }
     }
 
+    /*
+        Kalau tidak ada prodi yang mencapai standar 80,
+        sistem tetap menampilkan 3 alternatif terbaik berdasarkan nilai akademik.
+    */
     if (count($skorProdi) == 0) {
         foreach ($daftarProdi as $prodi) {
             $nilaiAkademik = nilaiAkademikProdi($siswa, $prodi);
@@ -304,7 +300,11 @@ function ambilTopTigaProdi($siswa) {
     usort($skorProdi, function($a, $b) {
         if ($b["nilai_akademik"] == $a["nilai_akademik"]) {
             if ($b["minat"] == $a["minat"]) {
-                return strcmp($a["prodi"], $b["prodi"]);
+                if ($b["preferensi"] == $a["preferensi"]) {
+                    return prioritasProdi($a["prodi"]) <=> prioritasProdi($b["prodi"]);
+                }
+
+                return $b["preferensi"] <=> $a["preferensi"];
             }
 
             return $b["minat"] <=> $a["minat"];
@@ -324,17 +324,17 @@ function hasilRekomendasi($siswa) {
 function alasanRekomendasi($siswa) {
     $hasil = hasilRekomendasi($siswa);
 
-    return "Siswa direkomendasikan ke " . $hasil . " karena program studi tersebut memiliki kecocokan nilai akademik paling baik. Minat tetap diperhitungkan sebagai pendukung, sedangkan preferensi hanya menjadi informasi tambahan dan tidak digunakan untuk menentukan urutan saat nilai akademik sama.";
+    return "Siswa direkomendasikan ke " . $hasil . " karena program studi tersebut memiliki kecocokan nilai akademik terbaik berdasarkan nilai yang diinputkan. Nilai akademik menjadi penentu utama, sedangkan minat dan preferensi digunakan sebagai pendukung.";
 }
 
 function buatAnalisis($siswa) {
     $hasil = hasilRekomendasi($siswa);
 
     if ($siswa["jurusan_sma"] == "IPA") {
-        return "Berdasarkan data yang diinputkan, siswa berasal dari jurusan IPA dengan nilai Matematika " . $siswa["nilai_mtk"] . ", Fisika " . $siswa["nilai_fisika"] . ", dan Bahasa Inggris " . $siswa["nilai_inggris"] . ". Minat PCR yang dipilih adalah " . $siswa["minat_pcr"] . " dengan preferensi prodi " . $siswa["preferensi_prodi"] . ". Sistem membandingkan seluruh program studi PCR berdasarkan nilai akademik prodi dengan standar minimal 80. Rumus skor menggunakan bobot nilai akademik 70%, minat 20%, dan preferensi 10%. Namun, urutan rekomendasi tetap mengutamakan nilai akademik agar hasil tidak hanya mengikuti prodi yang dipilih siswa. Hasil akhir menunjukkan bahwa " . $hasil . " menjadi rekomendasi utama.";
+        return "Berdasarkan data yang diinputkan, siswa berasal dari jurusan IPA dengan nilai Matematika " . $siswa["nilai_mtk"] . ", Fisika " . $siswa["nilai_fisika"] . ", dan Bahasa Inggris " . $siswa["nilai_inggris"] . ". Minat PCR yang dipilih adalah " . $siswa["minat_pcr"] . " dengan preferensi prodi " . $siswa["preferensi_prodi"] . ". Sistem membandingkan seluruh program studi PCR berdasarkan nilai akademik prodi dengan standar minimal 80. Rumus skor menggunakan bobot nilai akademik 70%, minat 20%, dan preferensi 10%. Hasil akhir menunjukkan bahwa " . $hasil . " menjadi rekomendasi utama.";
     }
 
-    return "Berdasarkan data yang diinputkan, siswa berasal dari jurusan IPS dengan nilai Ekonomi " . $siswa["nilai_ekonomi"] . ", Bahasa Inggris " . $siswa["nilai_inggris"] . ", dan Matematika " . $siswa["nilai_mtk"] . ". Minat PCR yang dipilih adalah " . $siswa["minat_pcr"] . " dengan preferensi prodi " . $siswa["preferensi_prodi"] . ". Sistem membandingkan seluruh program studi PCR berdasarkan nilai akademik prodi dengan standar minimal 80. Rumus skor menggunakan bobot nilai akademik 70%, minat 20%, dan preferensi 10%. Namun, urutan rekomendasi tetap mengutamakan nilai akademik agar hasil tidak hanya mengikuti prodi yang dipilih siswa. Hasil akhir menunjukkan bahwa " . $hasil . " menjadi rekomendasi utama.";
+    return "Berdasarkan data yang diinputkan, siswa berasal dari jurusan IPS dengan nilai Ekonomi " . $siswa["nilai_ekonomi"] . ", Bahasa Inggris " . $siswa["nilai_inggris"] . ", dan Matematika " . $siswa["nilai_mtk"] . ". Minat PCR yang dipilih adalah " . $siswa["minat_pcr"] . " dengan preferensi prodi " . $siswa["preferensi_prodi"] . ". Untuk jurusan Informasi dan Industri, sistem menggunakan perhitungan yang sama yaitu Matematika 70%, Bahasa Inggris 20%, dan Ekonomi 10%. Sistem membandingkan seluruh program studi PCR berdasarkan nilai akademik prodi dengan standar minimal 80. Rumus skor menggunakan bobot nilai akademik 70%, minat 20%, dan preferensi 10%. Hasil akhir menunjukkan bahwa " . $hasil . " menjadi rekomendasi utama.";
 }
 
 $topTiga = ambilTopTigaProdi($siswa);
@@ -496,15 +496,9 @@ $hasilUtama = hasilRekomendasi($siswa);
         <h2>Hasil Rekomendasi</h2>
 
         <div class="info">
-            Tabel ini menampilkan tiga program studi PCR yang paling sesuai berdasarkan nilai akademik siswa.
-            <br><br>
             Rumus skor yang digunakan:
             <br>
-            <b>Skor = (Minat × 20%) + (Nilai Akademik Prodi × 70%) + (Preferensi × 10%)</b>
-            <br><br>
-            Standar minimal nilai akademik untuk semua prodi adalah <b>80</b>.
-            Urutan rekomendasi tetap mengutamakan nilai akademik prodi terlebih dahulu.
-            Jika nilai akademik sama, sistem melihat kecocokan minat. Preferensi tidak dijadikan penentu urutan agar hasil tidak hanya mengikuti prodi yang dipilih siswa.
+            <b>Skor = (Minat × 20%) + (Nilai Akademik × 70%) + (Preferensi × 10%)</b>
         </div>
 
         <table>
@@ -512,7 +506,7 @@ $hasilUtama = hasilRekomendasi($siswa);
                 <th>No</th>
                 <th>Program Studi PCR</th>
                 <th>Kategori</th>
-                <th>Nilai Akademik Prodi</th>
+                <th>Nilai Akademik</th>
                 <th>Standar Minimal</th>
                 <th>Skor Akhir</th>
                 <th>Keterangan</th>
@@ -556,9 +550,12 @@ Pilih Preferensi Prodi: <?= aman($siswa["preferensi_prodi"]); ?>
   |
 Hitung Nilai Akademik Setiap Prodi
   |
-Cek Standar Minimal Nilai Akademik Prodi = 80
+Khusus IPS:
+- Informasi = MTK 70%, B.Inggris 20%, Ekonomi 10%
+- Industri = MTK 70%, B.Inggris 20%, Ekonomi 10%
+- Bisnis dan Komunikasi = Ekonomi dan B.Inggris lebih dominan
   |
-Prodi yang Memenuhi Standar Diprioritaskan
+Cek Standar Minimal Nilai Akademik Prodi = 80
   |
 Hitung Skor:
 - Minat 20%
@@ -568,7 +565,8 @@ Hitung Skor:
 Urutkan Rekomendasi:
 1. Nilai Akademik Prodi Tertinggi
 2. Kecocokan Minat
-3. Nama Prodi
+3. Preferensi Prodi
+4. Prioritas Prodi
   |
 Ambil 3 Rekomendasi Teratas
   |
