@@ -142,6 +142,25 @@ function standarMinimalProdi($prodi) {
     return 80;
 }
 
+/* 
+    Kombinatorika:
+    Karena sistem menampilkan 3 rekomendasi prodi dalam bentuk urutan ranking,
+    maka digunakan rumus permutasi P(n,r) = n! / (n-r)!.
+*/
+function faktorial($n) {
+    $hasil = 1;
+
+    for ($i = 1; $i <= $n; $i++) {
+        $hasil *= $i;
+    }
+
+    return $hasil;
+}
+
+function permutasi($n, $r) {
+    return faktorial($n) / faktorial($n - $r);
+}
+
 function nilaiAkademikProdi($siswa, $prodi) {
     if ($siswa["jurusan_sma"] == "IPA") {
         $mtk = $siswa["nilai_mtk"];
@@ -331,14 +350,19 @@ function buatAnalisis($siswa) {
     $hasil = hasilRekomendasi($siswa);
 
     if ($siswa["jurusan_sma"] == "IPA") {
-        return "Berdasarkan data yang diinputkan, siswa berasal dari jurusan IPA dengan nilai Matematika " . $siswa["nilai_mtk"] . ", Fisika " . $siswa["nilai_fisika"] . ", dan Bahasa Inggris " . $siswa["nilai_inggris"] . ". Minat PCR yang dipilih adalah " . $siswa["minat_pcr"] . " dengan preferensi prodi " . $siswa["preferensi_prodi"] . ". Sistem membandingkan seluruh program studi PCR berdasarkan nilai akademik prodi dengan standar minimal 80. Rumus skor menggunakan bobot nilai akademik 70%, minat 20%, dan preferensi 10%. Hasil akhir menunjukkan bahwa " . $hasil . " menjadi rekomendasi utama.";
+        return "Berdasarkan data yang diinputkan, siswa berasal dari jurusan IPA dengan nilai Matematika " . $siswa["nilai_mtk"] . ", Fisika " . $siswa["nilai_fisika"] . ", dan Bahasa Inggris " . $siswa["nilai_inggris"] . ". Minat PCR yang dipilih adalah " . $siswa["minat_pcr"] . " dengan preferensi prodi " . $siswa["preferensi_prodi"] . ". Sistem membandingkan seluruh program studi PCR berdasarkan nilai akademik prodi dengan standar minimal 80. Rumus skor menggunakan bobot nilai akademik 70%, minat 20%, dan preferensi 10%. Pada bagian kombinatorika, sistem menghitung kemungkinan susunan 3 rekomendasi prodi dari seluruh daftar prodi PCR menggunakan rumus permutasi. Hasil akhir menunjukkan bahwa " . $hasil . " menjadi rekomendasi utama.";
     }
 
-    return "Berdasarkan data yang diinputkan, siswa berasal dari jurusan IPS dengan nilai Ekonomi " . $siswa["nilai_ekonomi"] . ", Bahasa Inggris " . $siswa["nilai_inggris"] . ", dan Matematika " . $siswa["nilai_mtk"] . ". Minat PCR yang dipilih adalah " . $siswa["minat_pcr"] . " dengan preferensi prodi " . $siswa["preferensi_prodi"] . ". Untuk jurusan Informasi dan Industri, sistem menggunakan perhitungan yang sama yaitu Matematika 70%, Bahasa Inggris 20%, dan Ekonomi 10%. Sistem membandingkan seluruh program studi PCR berdasarkan nilai akademik prodi dengan standar minimal 80. Rumus skor menggunakan bobot nilai akademik 70%, minat 20%, dan preferensi 10%. Hasil akhir menunjukkan bahwa " . $hasil . " menjadi rekomendasi utama.";
+    return "Berdasarkan data yang diinputkan, siswa berasal dari jurusan IPS dengan nilai Ekonomi " . $siswa["nilai_ekonomi"] . ", Bahasa Inggris " . $siswa["nilai_inggris"] . ", dan Matematika " . $siswa["nilai_mtk"] . ". Minat PCR yang dipilih adalah " . $siswa["minat_pcr"] . " dengan preferensi prodi " . $siswa["preferensi_prodi"] . ". Untuk jurusan Informasi dan Industri, sistem menggunakan perhitungan yang sama yaitu Matematika 70%, Bahasa Inggris 20%, dan Ekonomi 10%. Sistem membandingkan seluruh program studi PCR berdasarkan nilai akademik prodi dengan standar minimal 80. Rumus skor menggunakan bobot nilai akademik 70%, minat 20%, dan preferensi 10%. Pada bagian kombinatorika, sistem menghitung kemungkinan susunan 3 rekomendasi prodi dari seluruh daftar prodi PCR menggunakan rumus permutasi. Hasil akhir menunjukkan bahwa " . $hasil . " menjadi rekomendasi utama.";
 }
 
 $topTiga = ambilTopTigaProdi($siswa);
 $hasilUtama = hasilRekomendasi($siswa);
+
+/* Variabel untuk kombinatorika */
+$jumlahProdi = count(semuaProdiPCR());
+$jumlahRekomendasi = 3;
+$jumlahKemungkinanSusunan = permutasi($jumlahProdi, $jumlahRekomendasi);
 ?>
 
 <!DOCTYPE html>
@@ -433,6 +457,14 @@ $hasilUtama = hasilRekomendasi($siswa);
             overflow-x: auto;
             font-size: 15px;
             line-height: 1.4;
+        }
+
+        .rumus {
+            background: #f9f9f9;
+            border: 1px solid #aaa;
+            padding: 15px;
+            line-height: 1.7;
+            font-size: 16px;
         }
 
         .back-area {
@@ -535,6 +567,39 @@ $hasilUtama = hasilRekomendasi($siswa);
     </div>
 
     <div class="card">
+        <h2>Kombinatorika Rekomendasi Prodi</h2>
+
+        <div class="info">
+            Kombinatorika digunakan untuk menghitung banyaknya kemungkinan susunan rekomendasi program studi.
+            Pada sistem ini terdapat <?= $jumlahProdi; ?> program studi PCR sebagai alternatif pilihan.
+            Sistem mengambil <?= $jumlahRekomendasi; ?> rekomendasi terbaik berdasarkan nilai akademik, minat, dan preferensi.
+            Karena hasil rekomendasi ditampilkan berdasarkan urutan peringkat, maka digunakan rumus kombinasi.
+        </div>
+
+        <div class="rumus">
+            <p><b>Rumus Kombinasi:</b></p>
+            <p>C(n,r) = n! / (r!(n-r)!)</p>
+
+            <p><b>Perhitungan:</b></p>
+            <p>
+                C(<?= $jumlahProdi; ?>,<?= $jumlahRekomendasi; ?>)
+                = <?= $jumlahProdi; ?>! / (<?= $jumlahRekomendasi; ?>! × (<?= $jumlahProdi; ?> - <?= $jumlahRekomendasi; ?>)!)
+            </p>
+
+            <p>
+                C(<?= $jumlahProdi; ?>,<?= $jumlahRekomendasi; ?>)
+                = <?= $jumlahProdi; ?> × <?= $jumlahProdi - 1; ?> × <?= $jumlahProdi - 2; ?>
+                = <?= number_format($jumlahKemungkinanSusunan, 0, ',', '.'); ?>
+            </p>
+
+            <p>
+                Jadi, terdapat <b><?= number_format($jumlahKemungkinanSusunan, 0, ',', '.'); ?></b>
+                kemungkinan susunan 3 rekomendasi prodi dari <?= $jumlahProdi; ?> program studi PCR.
+            </p>
+        </div>
+    </div>
+
+    <div class="card">
         <h2>Pohon Keputusan</h2>
 
         <pre>
@@ -561,6 +626,9 @@ Hitung Skor:
 - Minat 20%
 - Nilai Akademik Prodi 70%
 - Preferensi 10%
+  |
+Hitung Kombinatorika:
+P(<?= $jumlahProdi; ?>,<?= $jumlahRekomendasi; ?>) = <?= number_format($jumlahKemungkinanSusunan, 0, ',', '.'); ?> kemungkinan susunan rekomendasi
   |
 Urutkan Rekomendasi:
 1. Nilai Akademik Prodi Tertinggi
