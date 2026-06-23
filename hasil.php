@@ -285,19 +285,23 @@ function buatDataAlternatif($siswa, $prodi) {
 
 function urutkanAlternatif(&$dataAlternatif) {
     usort($dataAlternatif, function($a, $b) {
-        if ($b["nilai_akademik"] == $a["nilai_akademik"]) {
-            if ($b["minat"] == $a["minat"]) {
-                if ($b["preferensi"] == $a["preferensi"]) {
-                    return prioritasProdi($a["prodi"]) <=> prioritasProdi($b["prodi"]);
+        if ($b["skor"] == $a["skor"]) {
+            if ($b["nilai_akademik"] == $a["nilai_akademik"]) {
+                if ($b["minat"] == $a["minat"]) {
+                    if ($b["preferensi"] == $a["preferensi"]) {
+                        return prioritasProdi($a["prodi"]) <=> prioritasProdi($b["prodi"]);
+                    }
+
+                    return $b["preferensi"] <=> $a["preferensi"];
                 }
 
-                return $b["preferensi"] <=> $a["preferensi"];
+                return $b["minat"] <=> $a["minat"];
             }
 
-            return $b["minat"] <=> $a["minat"];
+            return $b["nilai_akademik"] <=> $a["nilai_akademik"];
         }
 
-        return $b["nilai_akademik"] <=> $a["nilai_akademik"];
+        return $b["skor"] <=> $a["skor"];
     });
 }
 
@@ -683,20 +687,18 @@ $namaTopTiga = array_column($topTiga, "prodi");
 
 
 
-        /* Pohon keputusan rapi dengan panah */
+        /* Pohon keputusan dinamis sesuai hasil input dan rekomendasi */
         .tree-frame {
-            border: 2px solid #111;
-            border-radius: 24px;
-            padding: 18px;
             background: #fff;
             margin-top: 15px;
             overflow-x: auto;
+            padding: 15px 20px 35px;
+            border: none;
         }
 
         .tree-svg-wrap {
-            width: 78%;
-            min-width: 720px;
-            max-width: 860px;
+            width: 100%;
+            max-width: 1050px;
             margin: 0 auto;
         }
 
@@ -704,49 +706,60 @@ $namaTopTiga = array_column($topTiga, "prodi");
             display: block;
             width: 100%;
             height: auto;
+            background: #fff;
+            overflow: visible;
         }
 
-        .tree-svg-second {
-            margin-top: -8px;
-        }
-
-        .svg-box {
+        .flow-box {
             fill: #fff;
-            stroke: #222;
-            stroke-width: 2.2;
+            stroke: #111;
+            stroke-width: 1.6;
         }
 
-        .svg-oval {
-            fill: #f9f9f9;
-        }
-
-        .svg-final {
-            fill: #eef6ff;
-        }
-
-        .svg-line {
-            stroke: #222;
-            stroke-width: 2.2;
+        .flow-line {
+            stroke: #111;
+            stroke-width: 1.6;
             fill: none;
         }
 
-        .svg-text {
+        .flow-text {
             font-family: Arial, sans-serif;
-            font-size: 18px;
-            font-weight: 700;
-            fill: #222;
+            font-size: 14px;
+            fill: #111;
+            font-weight: 400;
         }
 
-        .svg-final-text {
+        .flow-small {
             font-family: Arial, sans-serif;
-            font-size: 19px;
+            font-size: 13px;
+            fill: #111;
             font-weight: 700;
+        }
+
+        .active-box {
+            fill: #e8f3ff;
+            stroke: #1f4e79;
+            stroke-width: 2.4;
+        }
+
+        .active-line {
+            stroke: #1f4e79;
+            stroke-width: 2.6;
+            fill: none;
+        }
+
+        .active-text {
             fill: #1f4e79;
+            font-weight: 700;
         }
 
         @media (max-width: 800px) {
             .grid-2 {
                 grid-template-columns: 1fr;
+            }
+
+            .tree-svg-wrap {
+                width: 100%;
             }
         }
     </style>
@@ -1007,113 +1020,226 @@ $namaTopTiga = array_column($topTiga, "prodi");
     <div class="card">
         <h2>6. Pohon Keputusan</h2>
 
+        <?php
+            $rekom1 = $topTiga[0]["prodi"] ?? "-";
+            $rekom2 = $topTiga[1]["prodi"] ?? "-";
+            $rekom3 = $topTiga[2]["prodi"] ?? "-";
+
+            $utama = $topTiga[0] ?? null;
+
+            $memenuhiStandar = $utama ? ($utama["nilai_akademik"] >= $utama["standar"]) : false;
+            $minatSesuai = $utama ? ($utama["minat"] == 100) : false;
+            $preferensiSesuai = $utama ? ($utama["preferensi"] == 100) : false;
+
+            $jalurUtama = "";
+            if ($memenuhiStandar) {
+                if ($minatSesuai) {
+                    if ($preferensiSesuai) {
+                        $jalurUtama = "kandidat_utama";
+                    } else {
+                        $jalurUtama = "kandidat_rekomendasi";
+                    }
+                } else {
+                    $jalurUtama = "kandidat_alternatif";
+                }
+            } else {
+                $jalurUtama = "alternatif_pembimbing";
+            }
+
+            $clsBox = function($aktif) {
+                return $aktif ? "flow-box active-box" : "flow-box";
+            };
+
+            $clsLine = function($aktif) {
+                return $aktif ? "flow-line active-line" : "flow-line";
+            };
+
+            $clsText = function($aktif) {
+                return $aktif ? "flow-text active-text" : "flow-text";
+            };
+
+            $clsSmall = function($aktif) {
+                return $aktif ? "flow-small active-text" : "flow-small";
+            };
+        ?>
+
         <div class="info">
-            Pohon keputusan dibuat dalam bentuk alur rapi. Setiap kotak menunjukkan langkah proses, panah menunjukkan alur, dan cabang menunjukkan hasil pengecekan standar nilai.
+            Pohon keputusan berikut menyesuaikan data input siswa dan hasil rekomendasi utama. Jalur yang aktif ditandai warna biru.
         </div>
 
         <div class="tree-frame">
             <div class="tree-svg-wrap">
-                <svg class="tree-svg" viewBox="0 0 1100 1220" xmlns="http://www.w3.org/2000/svg" aria-label="Pohon keputusan sistem rekomendasi jurusan PCR">
+                <svg class="tree-svg" viewBox="-80 0 1560 1960" xmlns="http://www.w3.org/2000/svg" aria-label="Pohon keputusan dinamis sistem rekomendasi program studi PCR">
                     <defs>
-                        <marker id="arrowDown" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto" markerUnits="strokeWidth">
-                            <path d="M 0 0 L 10 5 L 0 10 z" fill="#222" />
+                        <marker id="flowArrow" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto" markerUnits="strokeWidth">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="#111" />
                         </marker>
                     </defs>
 
-                    <!-- kotak-kotak utama -->
-                    <rect x="410" y="20" width="280" height="52" rx="0" ry="0" class="svg-box"/>
-                    <text x="550" y="52" text-anchor="middle" class="svg-text">Mulai</text>
+                    <!-- Data input dari user -->
+                    <rect x="455" y="20" width="490" height="95" class="<?= $clsBox(true); ?>"/>
+                    <text x="700" y="47" text-anchor="middle" class="<?= $clsText(true); ?>">Input Data Mahasiswa</text>
+                    <text x="700" y="69" text-anchor="middle" class="<?= $clsText(true); ?>">Jurusan SMA: <?= aman($siswa["jurusan_sma"]); ?></text>
+                    <text x="700" y="91" text-anchor="middle" class="<?= $clsText(true); ?>">Minat PCR: <?= aman($siswa["minat_pcr"]); ?></text>
+                    <text x="700" y="113" text-anchor="middle" class="<?= $clsText(true); ?>">Preferensi: <?= aman($siswa["preferensi_prodi"]); ?></text>
 
-                    <line x1="550" y1="72" x2="550" y2="105" class="svg-line" marker-end="url(#arrowDown)"/>
+                    <line x1="700" y1="115" x2="700" y2="150" class="<?= $clsLine(true); ?>" marker-end="url(#flowArrow)"/>
 
-                    <rect x="375" y="115" width="350" height="58" class="svg-box"/>
-                    <text x="550" y="150" text-anchor="middle" class="svg-text">Input Data Siswa</text>
+                    <rect x="430" y="160" width="540" height="65" class="<?= $clsBox(true); ?>"/>
+                    <text x="700" y="199" text-anchor="middle" class="<?= $clsText(true); ?>">Bentuk Himpunan Data Siswa dan Program Studi</text>
 
-                    <line x1="550" y1="173" x2="550" y2="208" class="svg-line" marker-end="url(#arrowDown)"/>
+                    <line x1="700" y1="225" x2="700" y2="260" class="<?= $clsLine(true); ?>" marker-end="url(#flowArrow)"/>
 
-                    <rect x="245" y="218" width="610" height="95" class="svg-box"/>
-                    <text x="550" y="253" text-anchor="middle" class="svg-text">Jurusan SMA: <?= aman($siswa["jurusan_sma"]); ?></text>
-                    <text x="550" y="279" text-anchor="middle" class="svg-text">Minat PCR: <?= aman($siswa["minat_pcr"]); ?></text>
-                    <text x="550" y="305" text-anchor="middle" class="svg-text">Preferensi Prodi: <?= aman($siswa["preferensi_prodi"]); ?></text>
+                    <rect x="430" y="270" width="540" height="65" class="<?= $clsBox(true); ?>"/>
+                    <text x="700" y="309" text-anchor="middle" class="<?= $clsText(true); ?>">Definisi Relasi Siswa dengan Program Studi</text>
 
-                    <line x1="550" y1="313" x2="550" y2="348" class="svg-line" marker-end="url(#arrowDown)"/>
+                    <line x1="700" y1="335" x2="700" y2="370" class="<?= $clsLine(true); ?>" marker-end="url(#flowArrow)"/>
 
-                    <rect x="225" y="358" width="650" height="58" class="svg-box"/>
-                    <text x="550" y="393" text-anchor="middle" class="svg-text">Bentuk Himpunan Data Siswa dan Program Studi</text>
+                    <rect x="430" y="380" width="540" height="65" class="<?= $clsBox(true); ?>"/>
+                    <text x="700" y="419" text-anchor="middle" class="<?= $clsText(true); ?>">Hitung Nilai Akademik setiap Alternatif Prodi</text>
 
-                    <line x1="550" y1="416" x2="550" y2="451" class="svg-line" marker-end="url(#arrowDown)"/>
+                    <line x1="700" y1="445" x2="700" y2="480" class="<?= $clsLine(true); ?>" marker-end="url(#flowArrow)"/>
 
-                    <rect x="225" y="461" width="650" height="58" class="svg-box"/>
-                    <text x="550" y="496" text-anchor="middle" class="svg-text">Definisikan Relasi Siswa dengan Program Studi</text>
+                    <rect x="430" y="490" width="540" height="75" class="<?= $clsBox(true); ?>"/>
+                    <text x="700" y="522" text-anchor="middle" class="<?= $clsText(true); ?>">Nilai Akademik Memenuhi Standar Minimal?</text>
+                    <text x="700" y="544" text-anchor="middle" class="<?= $clsText(true); ?>">Nilai <?= $utama ? number_format($utama["nilai_akademik"], 1) : "-"; ?> dari standar <?= $utama ? number_format($utama["standar"], 0) : "80"; ?></text>
 
-                    <line x1="550" y1="519" x2="550" y2="554" class="svg-line" marker-end="url(#arrowDown)"/>
+                    <!-- Cabang standar -->
+                    <text x="300" y="525" text-anchor="middle" class="<?= $clsSmall($memenuhiStandar); ?>">Ya (&gt;= 80)</text>
+                    <line x1="430" y1="527" x2="245" y2="527" class="<?= $clsLine($memenuhiStandar); ?>"/>
+                    <line x1="245" y1="527" x2="245" y2="620" class="<?= $clsLine($memenuhiStandar); ?>" marker-end="url(#flowArrow)"/>
 
-                    <rect x="225" y="564" width="650" height="58" class="svg-box"/>
-                    <text x="550" y="599" text-anchor="middle" class="svg-text">Hitung Nilai Akademik Setiap Alternatif Prodi</text>
+                    <text x="1110" y="525" text-anchor="middle" class="<?= $clsSmall(!$memenuhiStandar); ?>">Tidak (&lt;80)</text>
+                    <line x1="970" y1="527" x2="1160" y2="527" class="<?= $clsLine(!$memenuhiStandar); ?>"/>
+                    <line x1="1160" y1="527" x2="1160" y2="620" class="<?= $clsLine(!$memenuhiStandar); ?>" marker-end="url(#flowArrow)"/>
 
-                    <line x1="550" y1="622" x2="550" y2="657" class="svg-line" marker-end="url(#arrowDown)"/>
+                    <!-- Kiri -->
+                    <rect x="110" y="630" width="360" height="65" class="<?= $clsBox($memenuhiStandar); ?>"/>
+                    <text x="290" y="669" text-anchor="middle" class="<?= $clsText($memenuhiStandar); ?>">Minat sesuai dengan Program Studi?</text>
 
-                    <rect x="225" y="667" width="650" height="58" class="svg-box"/>
-                    <text x="550" y="702" text-anchor="middle" class="svg-text">Cek Standar Minimal Nilai Akademik = 80</text>
+                    <text x="110" y="735" text-anchor="middle" class="<?= $clsSmall($memenuhiStandar && $minatSesuai); ?>">Ya</text>
+                    <line x1="290" y1="695" x2="160" y2="780" class="<?= $clsLine($memenuhiStandar && $minatSesuai); ?>" marker-end="url(#flowArrow)"/>
 
-                    <!-- cabang -->
-                    <line x1="550" y1="725" x2="550" y2="760" class="svg-line"/>
-                    <line x1="275" y1="760" x2="825" y2="760" class="svg-line"/>
-                    <line x1="275" y1="760" x2="275" y2="790" class="svg-line" marker-end="url(#arrowDown)"/>
-                    <line x1="825" y1="760" x2="825" y2="790" class="svg-line" marker-end="url(#arrowDown)"/>
+                    <text x="470" y="735" text-anchor="middle" class="<?= $clsSmall($memenuhiStandar && !$minatSesuai); ?>">Tidak</text>
+                    <line x1="290" y1="695" x2="505" y2="780" class="<?= $clsLine($memenuhiStandar && !$minatSesuai); ?>" marker-end="url(#flowArrow)"/>
 
-                    <rect x="185" y="800" width="180" height="48" class="svg-box small-box"/>
-                    <text x="275" y="829" text-anchor="middle" class="svg-text">Nilai ≥ 80</text>
-                    <line x1="275" y1="848" x2="275" y2="878" class="svg-line" marker-end="url(#arrowDown)"/>
-                    <rect x="95" y="888" width="360" height="58" rx="28" ry="28" class="svg-box svg-oval"/>
-                    <text x="275" y="923" text-anchor="middle" class="svg-text">Masuk kandidat rekomendasi</text>
+                    <rect x="30" y="790" width="260" height="65" class="<?= $clsBox($memenuhiStandar && $minatSesuai); ?>"/>
+                    <text x="160" y="818" text-anchor="middle" class="<?= $clsText($memenuhiStandar && $minatSesuai); ?>">Program Studi Sesuai</text>
+                    <text x="160" y="840" text-anchor="middle" class="<?= $clsText($memenuhiStandar && $minatSesuai); ?>">Preferensi?</text>
 
-                    <rect x="735" y="800" width="180" height="48" class="svg-box small-box"/>
-                    <text x="825" y="829" text-anchor="middle" class="svg-text">Nilai &lt; 80</text>
-                    <line x1="825" y1="848" x2="825" y2="878" class="svg-line" marker-end="url(#arrowDown)"/>
-                    <rect x="645" y="888" width="360" height="58" rx="28" ry="28" class="svg-box svg-oval"/>
-                    <text x="825" y="923" text-anchor="middle" class="svg-text">Tetap menjadi alternatif pembanding</text>
+                    <rect x="370" y="790" width="270" height="65" class="<?= $clsBox($memenuhiStandar && !$minatSesuai); ?>"/>
+                    <text x="505" y="818" text-anchor="middle" class="<?= $clsText($memenuhiStandar && !$minatSesuai); ?>">Tetap Relevan Sebagai</text>
+                    <text x="505" y="840" text-anchor="middle" class="<?= $clsText($memenuhiStandar && !$minatSesuai); ?>">Alternatif?</text>
 
-                    <!-- gabung lagi -->
-                    <line x1="275" y1="946" x2="275" y2="982" class="svg-line"/>
-                    <line x1="825" y1="946" x2="825" y2="982" class="svg-line"/>
-                    <line x1="275" y1="982" x2="825" y2="982" class="svg-line"/>
-                    <line x1="550" y1="982" x2="550" y2="1012" class="svg-line" marker-end="url(#arrowDown)"/>
+                    <text x="95" y="915" text-anchor="middle" class="<?= $clsSmall($jalurUtama == 'kandidat_utama'); ?>">Ya</text>
+                    <line x1="160" y1="855" x2="80" y2="940" class="<?= $clsLine($jalurUtama == 'kandidat_utama'); ?>" marker-end="url(#flowArrow)"/>
 
-                    <rect x="225" y="1022" width="650" height="72" class="svg-box"/>
-                    <text x="550" y="1053" text-anchor="middle" class="svg-text">Hitung Skor Akhir</text>
-                    <text x="550" y="1081" text-anchor="middle" class="svg-text">Minat 20% + Nilai Akademik 70% + Preferensi 10%</text>
+                    <text x="255" y="900" text-anchor="middle" class="<?= $clsSmall($jalurUtama == 'kandidat_rekomendasi'); ?>">Tidak</text>
+                    <line x1="160" y1="855" x2="300" y2="940" class="<?= $clsLine($jalurUtama == 'kandidat_rekomendasi'); ?>" marker-end="url(#flowArrow)"/>
 
-                    <line x1="550" y1="1094" x2="550" y2="1128" class="svg-line" marker-end="url(#arrowDown)"/>
+                    <text x="455" y="915" text-anchor="middle" class="<?= $clsSmall($jalurUtama == 'kandidat_alternatif'); ?>">Ya</text>
+                    <line x1="505" y1="855" x2="545" y2="940" class="<?= $clsLine($jalurUtama == 'kandidat_alternatif'); ?>" marker-end="url(#flowArrow)"/>
 
-                    <rect x="225" y="1138" width="650" height="72" class="svg-box"/>
-                    <text x="550" y="1168" text-anchor="middle" class="svg-text">Hitung Kombinatorika</text>
-                    <text x="550" y="1196" text-anchor="middle" class="svg-text">P(<?= $jumlahProdi; ?>,<?= $jumlahRekomendasi; ?>) = <?= number_format($jumlahKemungkinanSusunan, 0, ',', '.'); ?> kemungkinan susunan rekomendasi</text>
-                </svg>
+                    <text x="680" y="900" text-anchor="middle" class="<?= $clsSmall(false); ?>">Tidak</text>
+                    <line x1="505" y1="855" x2="755" y2="940" class="<?= $clsLine(false); ?>" marker-end="url(#flowArrow)"/>
 
-                <svg class="tree-svg tree-svg-second" viewBox="0 0 1100 380" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                    <defs>
-                        <marker id="arrowDown2" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto" markerUnits="strokeWidth">
-                            <path d="M 0 0 L 10 5 L 0 10 z" fill="#222" />
-                        </marker>
-                    </defs>
-                    <line x1="550" y1="0" x2="550" y2="34" class="svg-line" marker-end="url(#arrowDown2)"/>
+                    <rect x="0" y="950" width="195" height="70" class="<?= $clsBox($jalurUtama == 'kandidat_utama'); ?>"/>
+                    <text x="98" y="979" text-anchor="middle" class="<?= $clsText($jalurUtama == 'kandidat_utama'); ?>">Kandidat</text>
+                    <text x="98" y="1001" text-anchor="middle" class="<?= $clsText($jalurUtama == 'kandidat_utama'); ?>">Rekomendasi Utama</text>
 
-                    <rect x="225" y="44" width="650" height="94" class="svg-box"/>
-                    <text x="550" y="80" text-anchor="middle" class="svg-text">Urutkan Rekomendasi</text>
-                    <text x="550" y="108" text-anchor="middle" class="svg-text">1. Nilai Akademik Tertinggi   2. Kecocokan Minat</text>
-                    <text x="550" y="132" text-anchor="middle" class="svg-text">3. Preferensi Prodi   4. Prioritas Prodi</text>
+                    <rect x="225" y="950" width="195" height="70" class="<?= $clsBox($jalurUtama == 'kandidat_rekomendasi'); ?>"/>
+                    <text x="323" y="979" text-anchor="middle" class="<?= $clsText($jalurUtama == 'kandidat_rekomendasi'); ?>">Kandidat</text>
+                    <text x="323" y="1001" text-anchor="middle" class="<?= $clsText($jalurUtama == 'kandidat_rekomendasi'); ?>">Rekomendasi</text>
 
-                    <line x1="550" y1="138" x2="550" y2="172" class="svg-line" marker-end="url(#arrowDown2)"/>
+                    <rect x="455" y="950" width="195" height="70" class="<?= $clsBox($jalurUtama == 'kandidat_alternatif'); ?>"/>
+                    <text x="553" y="979" text-anchor="middle" class="<?= $clsText($jalurUtama == 'kandidat_alternatif'); ?>">Kandidat</text>
+                    <text x="553" y="1001" text-anchor="middle" class="<?= $clsText($jalurUtama == 'kandidat_alternatif'); ?>">Alternatif</text>
 
-                    <rect x="360" y="182" width="380" height="58" class="svg-box"/>
-                    <text x="550" y="217" text-anchor="middle" class="svg-text">Ambil 3 Rekomendasi Teratas</text>
+                    <rect x="690" y="950" width="205" height="70" class="<?= $clsBox(false); ?>"/>
+                    <text x="793" y="979" text-anchor="middle" class="<?= $clsText(false); ?>">Tidak</text>
+                    <text x="793" y="1001" text-anchor="middle" class="<?= $clsText(false); ?>">Direkomendasikan</text>
 
-                    <line x1="550" y1="240" x2="550" y2="274" class="svg-line" marker-end="url(#arrowDown2)"/>
+                    <!-- Kanan -->
+                    <rect x="980" y="630" width="360" height="65" class="<?= $clsBox(!$memenuhiStandar); ?>"/>
+                    <text x="1160" y="669" text-anchor="middle" class="<?= $clsText(!$memenuhiStandar); ?>">Tetap Menjadi Alternatif Pembimbing?</text>
 
-                    <rect x="225" y="284" width="650" height="72" rx="36" ry="36" class="svg-box svg-final"/>
-                    <text x="550" y="315" text-anchor="middle" class="svg-final-text">Rekomendasi Utama</text>
-                    <text x="550" y="343" text-anchor="middle" class="svg-final-text"><?= aman($hasilUtama); ?></text>
+                    <text x="1030" y="825" text-anchor="middle" class="<?= $clsSmall($jalurUtama == 'alternatif_pembimbing'); ?>">Ya</text>
+                    <line x1="1160" y1="695" x2="1030" y2="940" class="<?= $clsLine($jalurUtama == 'alternatif_pembimbing'); ?>" marker-end="url(#flowArrow)"/>
+
+                    <text x="1305" y="825" text-anchor="middle" class="<?= $clsSmall(false); ?>">Tidak</text>
+                    <line x1="1160" y1="695" x2="1305" y2="940" class="<?= $clsLine(false); ?>" marker-end="url(#flowArrow)"/>
+
+                    <rect x="930" y="950" width="220" height="70" class="<?= $clsBox($jalurUtama == 'alternatif_pembimbing'); ?>"/>
+                    <text x="1040" y="979" text-anchor="middle" class="<?= $clsText($jalurUtama == 'alternatif_pembimbing'); ?>">Alternatif</text>
+                    <text x="1040" y="1001" text-anchor="middle" class="<?= $clsText($jalurUtama == 'alternatif_pembimbing'); ?>">Pembimbing</text>
+
+                    <rect x="1200" y="950" width="200" height="70" class="<?= $clsBox(false); ?>"/>
+                    <text x="1300" y="979" text-anchor="middle" class="<?= $clsText(false); ?>">Tidak</text>
+                    <text x="1300" y="1001" text-anchor="middle" class="<?= $clsText(false); ?>">Direkomendasikan</text>
+
+                    <!-- Gabung -->
+                    <line x1="98" y1="1020" x2="98" y2="1085" class="flow-line"/>
+                    <line x1="323" y1="1020" x2="323" y2="1085" class="flow-line"/>
+                    <line x1="553" y1="1020" x2="553" y2="1085" class="flow-line"/>
+                    <line x1="793" y1="1020" x2="793" y2="1085" class="flow-line"/>
+                    <line x1="1040" y1="1020" x2="1040" y2="1085" class="flow-line"/>
+                    <line x1="1300" y1="1020" x2="1300" y2="1085" class="flow-line"/>
+                    <line x1="98" y1="1085" x2="1300" y2="1085" class="flow-line"/>
+                    <line x1="700" y1="1085" x2="700" y2="1130" class="<?= $clsLine(true); ?>" marker-end="url(#flowArrow)"/>
+
+                    <!-- Akhir -->
+                    <rect x="400" y="1140" width="600" height="75" class="<?= $clsBox(true); ?>"/>
+                    <text x="700" y="1173" text-anchor="middle" class="<?= $clsText(true); ?>">Hitung Skor Akhir</text>
+                    <text x="700" y="1195" text-anchor="middle" class="<?= $clsText(true); ?>">Minat 20% + Nilai Akademik 70% + Preferensi 10%</text>
+
+                    <line x1="700" y1="1215" x2="700" y2="1250" class="<?= $clsLine(true); ?>" marker-end="url(#flowArrow)"/>
+
+                    <rect x="430" y="1260" width="540" height="75" class="<?= $clsBox(true); ?>"/>
+                    <text x="700" y="1293" text-anchor="middle" class="<?= $clsText(true); ?>">Hitung Permutasi</text>
+                    <text x="700" y="1315" text-anchor="middle" class="<?= $clsText(true); ?>">P (<?= $jumlahProdi; ?>,<?= $jumlahRekomendasi; ?>) = <?= number_format($jumlahKemungkinanSusunan, 0, ',', '.'); ?> kemungkinan susunan rekomendasi</text>
+
+                    <line x1="700" y1="1335" x2="700" y2="1370" class="<?= $clsLine(true); ?>" marker-end="url(#flowArrow)"/>
+
+                    <rect x="430" y="1380" width="540" height="150" class="<?= $clsBox(true); ?>"/>
+                    <text x="700" y="1415" text-anchor="middle" class="<?= $clsText(true); ?>">Urutkan Rekomendasi</text>
+                    <text x="700" y="1443" text-anchor="middle" class="<?= $clsText(true); ?>">1. Skor Akhir Tertinggi</text>
+                    <text x="700" y="1469" text-anchor="middle" class="<?= $clsText(true); ?>">2. Nilai Akademik</text>
+                    <text x="700" y="1495" text-anchor="middle" class="<?= $clsText(true); ?>">3. Kecocokan Minat</text>
+                    <text x="700" y="1521" text-anchor="middle" class="<?= $clsText(true); ?>">4. Preferensi Prodi</text>
+
+                    <line x1="700" y1="1530" x2="700" y2="1565" class="<?= $clsLine(true); ?>" marker-end="url(#flowArrow)"/>
+
+                    <rect x="525" y="1575" width="350" height="60" class="<?= $clsBox(true); ?>"/>
+                    <text x="700" y="1611" text-anchor="middle" class="<?= $clsText(true); ?>">Ambil 3 Rekomendasi Teratas</text>
+
+                    <line x1="700" y1="1635" x2="700" y2="1663" class="flow-line"/>
+                    <line x1="390" y1="1663" x2="1010" y2="1663" class="flow-line"/>
+                    <line x1="390" y1="1663" x2="390" y2="1690" class="flow-line" marker-end="url(#flowArrow)"/>
+                    <line x1="700" y1="1663" x2="700" y2="1690" class="flow-line" marker-end="url(#flowArrow)"/>
+                    <line x1="1010" y1="1663" x2="1010" y2="1690" class="flow-line" marker-end="url(#flowArrow)"/>
+
+                    <rect x="250" y="1700" width="280" height="65" class="<?= $clsBox($rekom1 == $hasilUtama); ?>"/>
+                    <text x="390" y="1727" text-anchor="middle" class="<?= $clsText($rekom1 == $hasilUtama); ?>">Rekomendasi 1</text>
+                    <text x="390" y="1749" text-anchor="middle" class="<?= $clsText($rekom1 == $hasilUtama); ?>"><?= aman($rekom1); ?></text>
+
+                    <rect x="560" y="1700" width="280" height="65" class="flow-box"/>
+                    <text x="700" y="1727" text-anchor="middle" class="flow-text">Rekomendasi 2</text>
+                    <text x="700" y="1749" text-anchor="middle" class="flow-text"><?= aman($rekom2); ?></text>
+
+                    <rect x="870" y="1700" width="280" height="65" class="flow-box"/>
+                    <text x="1010" y="1727" text-anchor="middle" class="flow-text">Rekomendasi 3</text>
+                    <text x="1010" y="1749" text-anchor="middle" class="flow-text"><?= aman($rekom3); ?></text>
+
+                    <line x1="390" y1="1765" x2="390" y2="1800" class="flow-line"/>
+                    <line x1="700" y1="1765" x2="700" y2="1800" class="flow-line"/>
+                    <line x1="1010" y1="1765" x2="1010" y2="1800" class="flow-line"/>
+                    <line x1="390" y1="1800" x2="1010" y2="1800" class="flow-line"/>
+                    <line x1="700" y1="1800" x2="700" y2="1830" class="<?= $clsLine(true); ?>" marker-end="url(#flowArrow)"/>
+
+                    <rect x="405" y="1840" width="590" height="90" class="<?= $clsBox(true); ?>"/>
+                    <text x="700" y="1872" text-anchor="middle" class="<?= $clsText(true); ?>">Rekomendasi Utama:</text>
+                    <text x="700" y="1896" text-anchor="middle" class="<?= $clsText(true); ?>"><?= aman($hasilUtama); ?></text>
+                    <text x="700" y="1918" text-anchor="middle" class="<?= $clsText(true); ?>">Skor Akhir: <?= $utama ? number_format($utama["skor"], 1) : "-"; ?></text>
                 </svg>
             </div>
         </div>
